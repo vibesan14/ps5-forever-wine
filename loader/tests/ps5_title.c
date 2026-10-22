@@ -1472,7 +1472,7 @@ static void sticky_test_write( struct wine_ps5_sticky_writes *handles,
                                                1000000 + local_us, 1, flags );
         *state = decision.state;
         if (wine_ps5_sticky_write_candidate( local_us, written, 1 ))
-            assert( wine_ps5_sticky_write_promote( handles, handle, "/data/forever/cache-test" ) == 1 );
+            assert( wine_ps5_sticky_write_promote( handles, handle, "/data/anocore/cache-test" ) == 1 );
     }
 }
 
@@ -1493,10 +1493,10 @@ static void test_sticky_write_routing(void)
     assert( !wine_ps5_sticky_write_candidate( 553000, -1, 1 ) );
     assert( !wine_ps5_sticky_write_candidate( 553000, 0, 1 ) );
     assert( !wine_ps5_sticky_write_promote( &handles, handle, NULL ) );
-    assert( !wine_ps5_sticky_write_promote( &handles, handle, "/data/foreverx/file" ) );
-    assert( !wine_ps5_sticky_write_promote( &handles, handle, "/data/forever/" ) );
-    assert( !wine_ps5_sticky_write_promote( &handles, handle, "/data/forever//file" ) );
-    assert( !wine_ps5_sticky_write_promote( &handles, handle, "/data/forever/cache/../file" ) );
+    assert( !wine_ps5_sticky_write_promote( &handles, handle, "/data/anocorex/file" ) );
+    assert( !wine_ps5_sticky_write_promote( &handles, handle, "/data/anocore/" ) );
+    assert( !wine_ps5_sticky_write_promote( &handles, handle, "/data/anocore//file" ) );
+    assert( !wine_ps5_sticky_write_promote( &handles, handle, "/data/anocore/cache/../file" ) );
     /* the app's own folder is never brokered: the broker cannot know where it is */
     assert( !wine_ps5_sticky_write_promote( &handles, handle, "/app0/cache-test" ) );
 
@@ -1512,7 +1512,7 @@ static void test_sticky_write_routing(void)
     sticky_test_write( &handles, &state, handle, local_fd, broker_fd, "BBBB", 4, 4, 200000,
                        WINE_PS5_WRITE_LOCAL );
     assert( wine_ps5_sticky_write_contains( &handles, handle ) );
-    assert( !wine_ps5_sticky_write_promote( &handles, handle, "/data/forever/cache-test" ) );
+    assert( !wine_ps5_sticky_write_promote( &handles, handle, "/data/anocore/cache-test" ) );
     assert( !wine_ps5_sticky_write_contains( &handles, handle + 4 ) );
     assert( state.mode == WINE_PS5_WRITE_NORMAL ); /* No process-wide switch. */
     sticky_test_write( &handles, &state, handle, local_fd, broker_fd, "CCCC", 4, 0, 0,
@@ -1534,7 +1534,7 @@ static void test_sticky_write_routing(void)
 
     /* The sparse set neither evicts live handles nor conflates hash collisions. */
     for (i = 0; i < 256; i++)
-        assert( wine_ps5_sticky_write_promote( &handles, handle + 4 * i, "/data/forever/cache-test" ) == 1 );
+        assert( wine_ps5_sticky_write_promote( &handles, handle + 4 * i, "/data/anocore/cache-test" ) == 1 );
     for (i = 0; i < 256; i++) assert( wine_ps5_sticky_write_contains( &handles, handle + 4 * i ) );
     for (i = 0; i < 256; i += 2) assert( wine_ps5_sticky_write_forget( &handles, handle + 4 * i ) );
     for (i = 1; i < 256; i += 2) assert( wine_ps5_sticky_write_forget( &handles, handle + 4 * i ) );
@@ -1569,14 +1569,14 @@ static void test_write_trace(void)
     struct wine_ps5_write_trace_history history = {0}, previous;
 
     assert( !strcmp( wine_ps5_write_trace_class( NULL ), "unknown" ) );
-    assert( !strcmp( wine_ps5_write_trace_class( "/data/foreverx/Cache/ADB/file" ), "outside-title" ) );
+    assert( !strcmp( wine_ps5_write_trace_class( "/data/anocorex/Cache/ADB/file" ), "outside-title" ) );
     assert( !strcmp( wine_ps5_write_trace_class( "/app0/wine/Cache/ADB/file" ), "outside-title" ) );
-    assert( !strcmp( wine_ps5_write_trace_class( "/data/forever/prefix/Cache/ADB/enUS/ItemSparse32.tmp" ), "title-adb" ) );
-    assert( !strcmp( wine_ps5_write_trace_class( "/data/forever/prefix/cache/adb/file" ), "title-adb" ) );
-    assert( !strcmp( wine_ps5_write_trace_class( "/data/forever/prefix/Cache/ADB2/file" ), "title-cache" ) );
-    assert( !strcmp( wine_ps5_write_trace_class( "/data/forever/prefix/Cache" ), "title-cache" ) );
-    assert( !strcmp( wine_ps5_write_trace_class( "/data/forever/prefix/Cache2/ADB/file" ), "title-other" ) );
-    assert( !strcmp( wine_ps5_write_trace_class( "/data/forever/prefix/Cac" ), "title-other" ) );
+    assert( !strcmp( wine_ps5_write_trace_class( "/data/anocore/prefix/Cache/ADB/enUS/ItemSparse32.tmp" ), "title-adb" ) );
+    assert( !strcmp( wine_ps5_write_trace_class( "/data/anocore/prefix/cache/adb/file" ), "title-adb" ) );
+    assert( !strcmp( wine_ps5_write_trace_class( "/data/anocore/prefix/Cache/ADB2/file" ), "title-cache" ) );
+    assert( !strcmp( wine_ps5_write_trace_class( "/data/anocore/prefix/Cache" ), "title-cache" ) );
+    assert( !strcmp( wine_ps5_write_trace_class( "/data/anocore/prefix/Cache2/ADB/file" ), "title-other" ) );
+    assert( !strcmp( wine_ps5_write_trace_class( "/data/anocore/prefix/Cac" ), "title-other" ) );
 
     wine_ps5_write_trace_note( &history, WINE_PS5_WRITE_TRACE_FLUSH );
     wine_ps5_write_trace_note( &history, WINE_PS5_WRITE_TRACE_EOF );
@@ -1617,30 +1617,30 @@ static void test_write_trace(void)
 
 static void test_write_coalescing(void)
 {
-    static const char c_root[] = "/data/forever/prefix/drive_c";
-    static const char w_root[] = "/data/forever";
+    static const char c_root[] = "/data/anocore/prefix/drive_c";
+    static const char w_root[] = "/data/anocore";
     struct wine_ps5_title_buffer_state state = {0};
     assert( WINE_PS5_TITLE_BUFFER_RUNS == 8 );
     assert( WINE_PS5_TITLE_BUFFER_TOTAL_MAX == 8u * 1024u * 1024u );
 
     assert( wine_ps5_title_buffer_path(
-        "/data/forever/prefix/drive_c/Games/World of Warcraft/Data/data/data.000",
+        "/data/anocore/prefix/drive_c/Games/World of Warcraft/Data/data/data.000",
         c_root, w_root ) );
     assert( wine_ps5_title_buffer_path(
-        "/data/forever/Games/World of Warcraft/_retail_/Data/data/DATA.123",
+        "/data/anocore/Games/World of Warcraft/_retail_/Data/data/DATA.123",
         c_root, w_root ) );
     assert( wine_ps5_title_buffer_path(
-        "/data/forever/Games/World of Warcraft/_classic_era_/Data/data/data.999",
+        "/data/anocore/Games/World of Warcraft/_classic_era_/Data/data/data.999",
         c_root, w_root ) );
     assert( wine_ps5_title_buffer_path(
-        "/data/forever/custom/World of Warcraft/_future_channel_/Data/data/data.042",
+        "/data/anocore/custom/World of Warcraft/_future_channel_/Data/data/data.042",
         c_root, w_root ) );
     assert( !wine_ps5_title_buffer_path(
-        "/data/forever/Games/World of Warcraft/Data/indices/00.idx", c_root, w_root ) );
+        "/data/anocore/Games/World of Warcraft/Data/indices/00.idx", c_root, w_root ) );
     assert( !wine_ps5_title_buffer_path(
-        "/data/forever/Games/World of Warcraft/Data/data/data.12", c_root, w_root ) );
+        "/data/anocore/Games/World of Warcraft/Data/data/data.12", c_root, w_root ) );
     assert( !wine_ps5_title_buffer_path(
-        "/data/forever/Games/World of Warcraft/Data/data/data.1234", c_root, w_root ) );
+        "/data/anocore/Games/World of Warcraft/Data/data/data.1234", c_root, w_root ) );
     assert( !wine_ps5_title_buffer_path(
         "/tmp/World of Warcraft/Data/data/data.000", c_root, w_root ) );
 
@@ -1668,13 +1668,13 @@ static void test_write_coalescing(void)
     assert( wine_ps5_title_buffer_single_link( 0 ) ); /* Prospero unknown-count sentinel */
     assert( !wine_ps5_title_buffer_single_link( 2 ) );
     assert( wine_ps5_title_buffer_rename_may_enter_scope(
-        "/data/forever/Games/World of Warcraft/Data", c_root, w_root, 1 ) );
+        "/data/anocore/Games/World of Warcraft/Data", c_root, w_root, 1 ) );
     assert( wine_ps5_title_buffer_rename_may_enter_scope(
-        "/data/forever/Games/Staging", c_root, w_root, 1 ) ); /* ancestor may contain WoW */
+        "/data/anocore/Games/Staging", c_root, w_root, 1 ) ); /* ancestor may contain WoW */
     assert( wine_ps5_title_buffer_rename_may_enter_scope(
-        "/data/forever/Games/World of Warcraft/Data/data/data.321", c_root, w_root, 0 ) );
+        "/data/anocore/Games/World of Warcraft/Data/data/data.321", c_root, w_root, 0 ) );
     assert( !wine_ps5_title_buffer_rename_may_enter_scope(
-        "/data/forever/Games/World of Warcraft/Logs/log.txt", c_root, w_root, 0 ) );
+        "/data/anocore/Games/World of Warcraft/Logs/log.txt", c_root, w_root, 0 ) );
     assert( !wine_ps5_title_buffer_rename_may_enter_scope(
         "/tmp/World of Warcraft/Data", c_root, w_root, 1 ) );
     assert( wine_ps5_title_buffer_same_identity( 7, 11, 7, 11 ) );

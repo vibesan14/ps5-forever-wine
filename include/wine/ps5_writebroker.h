@@ -57,13 +57,13 @@
 #define WB_MAX_WRITE   (16u << 20)
 /* The title's user data (Wine prefix with the games) lives outside the app
  * folder, which a store update replaces. */
-#define WB_USER_ROOT   "/data/forever/"
+#define WB_USER_ROOT   "/data/anocore/"
 #define WB_TOKEN_FILE  WB_USER_ROOT ".writebroker-token"
 #define WB_QUIT_MAGIC  0x54495551u   /* "QUIT" in place of a wb_write: the broker exits */
 #define WB_ICON_MAGIC  0x4e4f4349u   /* "ICON" in place of a wb_write */
 #define WB_STATFS_MAGIC 0x53465453u  /* "STFS" in place of a wb_write */
 #define WB_ICON_FILE   WB_USER_ROOT "icon0.png"
-#define WB_TITLE_ID    "PPSA99030"
+#define WB_TITLE_ID    "PPSA99130"
 
 /* Length of WB_USER_ROOT when a brokered path is below it, or 0 when the
  * path is outside it, names only the root, or climbs out of it with "..". */

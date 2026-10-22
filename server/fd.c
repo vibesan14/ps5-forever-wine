@@ -1967,7 +1967,7 @@ static void park_census(void)
             /* the folder: the path up to its last '/' */
             name = fd->unix_name;
             if (!strncmp( name, "/app0/wine/prefix/drive_c/", 26 )) name += 26;
-            else if (!strncmp( name, "/data/forever/prefix/drive_c/", 29 )) name += 29;
+            else if (!strncmp( name, "/data/anocore/prefix/drive_c/", 29 )) name += 29;
             end = strrchr( name, '/' );
             len = end ? min( (size_t)(end - name), FOLDER_CHARS - 1 ) : 0;
             for (j = 0; j < folders; j++)
