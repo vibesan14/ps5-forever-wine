@@ -22,7 +22,6 @@
 #include <stdlib.h>
 
 #include "ntstatus.h"
-#define WIN32_NO_STATUS
 #include "windef.h"
 #include "winbase.h"
 #include "ncrypt.h"
@@ -55,7 +54,14 @@ static struct object *allocate_object(enum object_type type)
     struct object *ret;
     if (!(ret = calloc(1, sizeof(*ret)))) return NULL;
     ret->type = type;
+    ret->refs = 1;
     return ret;
+}
+
+static void provider_addref(NCRYPT_PROV_HANDLE handle)
+{
+    struct object *object = (struct object *)handle;
+    InterlockedIncrement(&object->refs);
 }
 
 static struct object_property *get_object_property(struct object *object, const WCHAR *name)
@@ -150,6 +156,12 @@ static struct object *create_key_object(enum algid algid, NCRYPT_PROV_HANDLE pro
         set_object_property(object, BCRYPT_SIGNATURE_LENGTH, (BYTE *)&dw_value, sizeof(dw_value));
         break;
 
+    case ECDSA_P256:
+        if (!(object = allocate_object(KEY))) return NULL;
+
+        object->key.algid = ECDSA_P256;
+        break;
+
     default:
         ERR("Invalid algid %#x\n", algid);
         return NULL;
@@ -161,6 +173,7 @@ static struct object *create_key_object(enum algid algid, NCRYPT_PROV_HANDLE pro
     set_object_property(object, NCRYPT_KEY_USAGE_PROPERTY, (BYTE *)&dw_value, sizeof(dw_value));
     dw_value = 0;
     set_object_property(object, NCRYPT_KEY_TYPE_PROPERTY, (BYTE *)&dw_value, sizeof(dw_value));
+    provider_addref(provider);
     set_object_property(object, NCRYPT_PROVIDER_HANDLE_PROPERTY, (BYTE *)&provider, sizeof(provider));
     return object;
 }
@@ -198,6 +211,24 @@ SECURITY_STATUS WINAPI NCryptCreatePersistedKey(NCRYPT_PROV_HANDLE provider, NCR
 
         set_object_property(object, NCRYPT_LENGTH_PROPERTY, (BYTE *)&default_bitlen, sizeof(default_bitlen));
         set_object_property(object, BCRYPT_PUBLIC_KEY_LENGTH, (BYTE *)&default_bitlen, sizeof(default_bitlen));
+    }
+    else if (!lstrcmpiW(algid, BCRYPT_ECDSA_P256_ALGORITHM))
+    {
+        NTSTATUS status;
+        DWORD bitlen = 256;
+
+        if (!(object = create_key_object(ECDSA_P256, provider)))
+            return NTE_NO_MEMORY;
+
+        status = BCryptGenerateKeyPair(BCRYPT_ECDSA_P256_ALG_HANDLE, &object->key.bcrypt_key, bitlen, 0);
+        if (status != STATUS_SUCCESS)
+        {
+            free(object);
+            return map_ntstatus(status);
+        }
+
+        set_object_property(object, NCRYPT_LENGTH_PROPERTY, (BYTE *)&bitlen, sizeof(bitlen));
+        set_object_property(object, BCRYPT_PUBLIC_KEY_LENGTH, (BYTE *)&bitlen, sizeof(bitlen));
     }
     else
     {
@@ -327,6 +358,8 @@ SECURITY_STATUS WINAPI NCryptFreeObject(NCRYPT_HANDLE handle)
         break;
     }
     case STORAGE_PROVIDER:
+        if (InterlockedDecrement(&object->refs))
+            return 0;
         break;
 
     default:
@@ -336,6 +369,9 @@ SECURITY_STATUS WINAPI NCryptFreeObject(NCRYPT_HANDLE handle)
 
     for (i = 0; i < object->num_properties; i++)
     {
+        if (!wcscmp(object->properties[i].key, NCRYPT_PROVIDER_HANDLE_PROPERTY))
+            NCryptFreeObject(*(NCRYPT_HANDLE *)object->properties[i].value);
+
         free(object->properties[i].key);
         free(object->properties[i].value);
     }
@@ -361,6 +397,8 @@ SECURITY_STATUS WINAPI NCryptGetProperty(NCRYPT_HANDLE handle, const WCHAR *name
     if (outsize < property->value_size) return NTE_BUFFER_TOO_SMALL;
 
     memcpy(output, property->value, property->value_size);
+    if (!wcscmp(name, NCRYPT_PROVIDER_HANDLE_PROPERTY))
+        provider_addref(*(NCRYPT_PROV_HANDLE*)property->value);
     return ERROR_SUCCESS;
 }
 
@@ -393,8 +431,9 @@ SECURITY_STATUS WINAPI NCryptImportKey(NCRYPT_PROV_HANDLE provider, NCRYPT_KEY_H
         WARN("Invalid flags %#lx\n", flags);
         return NTE_BAD_FLAGS;
     }
+    if (!header) return NTE_INVALID_PARAMETER;
 
-    switch(header->Magic)
+    switch (header->Magic)
     {
     case BCRYPT_RSAFULLPRIVATE_MAGIC:
     case BCRYPT_RSAPRIVATE_MAGIC:
@@ -539,6 +578,7 @@ SECURITY_STATUS WINAPI NCryptSetProperty(NCRYPT_HANDLE handle, const WCHAR *name
     if (flags) FIXME("flags %#lx not supported\n", flags);
 
     if (!object) return NTE_INVALID_HANDLE;
+    if (!wcscmp(name, NCRYPT_PROVIDER_HANDLE_PROPERTY)) return NTE_NOT_SUPPORTED;
     return set_object_property(object, name, input, insize);
 }
 
