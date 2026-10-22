@@ -148,6 +148,26 @@ static BOOL ps5_own_address( const char *node, char *address, size_t size )
         snprintf( address, size, "%.*s", (int)sizeof(info.ip_address), info.ip_address );
     return TRUE;
 }
+
+/* AnoCore's private server name is like the console's: no hosts file, and
+ * DNS servers do not own .test names, but the launcher and the game must
+ * both connect by that name. The kit sews the mapping into a PC's hosts file
+ * (Trust-Server-Certificate.cmd, from server-name.txt); the payload answers
+ * from its own copy, so no console service or upstream DNS is ever asked. */
+static BOOL ps5_anocore_address( const char *node, char *address, size_t size )
+{
+    static const char anocore_name[] = "192-168-0-211.anocore.test";
+    static const char anocore_ip[] = "192.168.0.211";
+
+    if (!node) return FALSE;
+    {
+        size_t len = strlen( anocore_name );
+        if (strncasecmp( node, anocore_name, len ) || (node[len] && strcmp( node + len, "." )))
+            return FALSE;
+    }
+    snprintf( address, size, "%s", anocore_ip );
+    return TRUE;
+}
 #endif
 
 #ifndef HAVE_LINUX_GETHOSTBYNAME_R_6
@@ -755,6 +775,7 @@ static NTSTATUS unix_getaddrinfo( void *args )
     int ret;
 #ifdef __PROSPERO__
     char own_address[16];
+    char anocore_address[16];
     int port = -1;
 #endif
 
@@ -809,6 +830,13 @@ static NTSTATUS unix_getaddrinfo( void *args )
         TRACE( "%s is this console, %s\n", debugstr_a(node), own_address );
         canonname = node;
         node = own_address;
+        unix_hints.ai_flags |= AI_NUMERICHOST;
+    }
+    if (ps5_anocore_address( node, anocore_address, sizeof(anocore_address) ))
+    {
+        TRACE( "%s is the AnoCore server, %s\n", debugstr_a(node), anocore_address );
+        canonname = node;
+        node = anocore_address;
         unix_hints.ai_flags |= AI_NUMERICHOST;
     }
 #endif
